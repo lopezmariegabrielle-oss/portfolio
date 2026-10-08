@@ -1,6 +1,7 @@
 from scapy.all import sniff, IP, TCP, UDP
 from scapy.error import Scapy_Exception
 from datetime import datetime
+import time
 
 
 class PacketCapture:
@@ -11,19 +12,20 @@ class PacketCapture:
         self.is_running = False
         self.captured_packets = []  # liste des métriques extraites
 
-    def start_capture(self, packet_count=0):
-        """Démarre la capture. packet_count=0 signifie une capture infinie
-        (arrêt avec Ctrl+C). Gère les erreurs de permissions et d'interface
-        manquante avec des messages clairs."""
+    def start_capture(self, packet_count=0, duration=None):
+        """Démarre la capture. packet_count=0 signifie pas de limite de
+        nombre de paquets. duration (en secondes) arrête la capture après
+        ce temps, peu importe le nombre de paquets. Gère les erreurs de
+        permissions et d'interface manquante avec des messages clairs."""
         self.is_running = True
         print(f"Capture démarrée sur l'interface {self.interface}...")
-        print("Appuie sur Ctrl+C pour arrêter.\n")
 
         try:
             sniff(
                 iface=self.interface,
                 prn=self.on_packet_received,
                 count=packet_count,
+                timeout=duration,
                 store=False,
             )
         except Scapy_Exception as e:
@@ -52,19 +54,23 @@ class PacketCapture:
         """Appelée automatiquement par Scapy à chaque paquet capturé.
         Extrait les métriques et les ajoute à self.captured_packets."""
         if IP in packet:
+            dst_port = None
+            if TCP in packet:
+                dst_port = packet[TCP].dport
+            elif UDP in packet:
+                dst_port = packet[UDP].dport
+
+            now = time.time()
             metrics = {
-                "timestamp": datetime.now().strftime("%H:%M:%S"),
+                "epoch": now,
+                "timestamp": datetime.fromtimestamp(now).strftime("%H:%M:%S"),
                 "src_ip": packet[IP].src,
                 "dst_ip": packet[IP].dst,
+                "dst_port": dst_port,
                 "protocol": "TCP" if TCP in packet else "UDP" if UDP in packet else "Autre",
                 "size": len(packet),
             }
             self.captured_packets.append(metrics)
-
-            print(
-                f"[{metrics['timestamp']}] {metrics['src_ip']} → {metrics['dst_ip']} "
-                f"| {metrics['protocol']} | {metrics['size']} octets"
-            )
 
     def get_captured_packets(self):
         """Retourne la liste des métriques capturées jusqu'ici."""
@@ -74,8 +80,5 @@ class PacketCapture:
 if __name__ == "__main__":
     capture = PacketCapture(interface="en0")
     capture.start_capture(packet_count=20)
-
     if capture.get_captured_packets():
         print(f"\n{len(capture.get_captured_packets())} paquets stockés en mémoire.")
-        print("Exemple du premier paquet stocké :")
-        print(capture.get_captured_packets()[0])
