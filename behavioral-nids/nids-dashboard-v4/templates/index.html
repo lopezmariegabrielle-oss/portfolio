@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Behavioral NIDS</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</head>
+<body>
+  <header class="top">
+    <div class="brand">behavioral<span>-nids</span></div>
+    <div class="status" id="status" role="status" aria-live="polite">Connexion…</div>
+  </header>
+
+  <div class="banner" id="demo-banner" hidden>
+    Données de démonstration : ce ne sont pas des détections réelles.
+  </div>
+
+  <main>
+    <section class="cards" aria-label="Indicateurs clés">
+      <article class="card">
+        <h2>Flux analysés (24 h)</h2>
+        <p class="value" id="v-flows">—</p>
+        <p class="sub" id="s-flows">&nbsp;</p>
+      </article>
+      <article class="card">
+        <h2>Alertes (24 h)</h2>
+        <p class="value" id="v-alerts">—</p>
+        <p class="sub" id="s-alerts">&nbsp;</p>
+      </article>
+      <article class="card">
+        <h2>Taux d'anomalies</h2>
+        <p class="value" id="v-rate">—</p>
+        <p class="sub">part des flux jugés anormaux</p>
+      </article>
+      <article class="card">
+        <h2>Source la plus active</h2>
+        <p class="value value-mono" id="v-top">—</p>
+        <p class="sub" id="s-top">&nbsp;</p>
+      </article>
+    </section>
+
+    <section class="chips" id="chips" aria-label="Alertes par sévérité (24 h)"></section>
+
+    <section class="panel" aria-labelledby="t-chart">
+      <div class="panel-head">
+        <h2 id="t-chart">Trafic et anomalies</h2>
+        <label class="field">Période
+          <select id="range">
+            <option value="30">30 min</option>
+            <option value="60" selected>1 h</option>
+            <option value="360">6 h</option>
+            <option value="1440">24 h</option>
+          </select>
+        </label>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="chart" role="img"
+                aria-label="Courbe du nombre de flux par minute et barres des anomalies détectées"></canvas>
+        <div class="tooltip" id="tooltip" hidden></div>
+      </div>
+      <ul class="legend">
+        <li><span class="swatch swatch-flows"></span>Flux par minute (axe gauche)</li>
+        <li><span class="swatch swatch-anom"></span>Anomalies (axe droit)</li>
+      </ul>
+    </section>
+
+    <section class="panel" aria-labelledby="t-alerts">
+      <div class="panel-head">
+        <h2 id="t-alerts">Alertes récentes</h2>
+        <div class="filters">
+        <label class="field">Statut
+          <select id="stat">
+            <option value="">Tous</option>
+            <option value="new">Nouvelle</option>
+            <option value="investigating">En cours</option>
+            <option value="false_positive">Fausse alerte</option>
+            <option value="resolved">Traitée</option>
+          </select>
+        </label>
+        <label class="field">Sévérité
+          <select id="sev">
+            <option value="">Toutes</option>
+            <option value="critical">Critique</option>
+            <option value="high">Élevée</option>
+            <option value="medium">Moyenne</option>
+            <option value="low">Faible</option>
+          </select>
+        </label>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Heure</th>
+              <th scope="col">Source</th>
+              <th scope="col">Destination</th>
+              <th scope="col">Proto</th>
+              <th scope="col">Score</th>
+              <th scope="col">Sévérité</th>
+              <th scope="col">Raison</th>
+              <th scope="col">Statut</th>
+            </tr>
+          </thead>
+          <tbody id="alerts-body"></tbody>
+        </table>
+      </div>
+      <div class="table-foot">
+        <span id="alerts-count"></span>
+        <button type="button" id="more" hidden>Voir plus</button>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

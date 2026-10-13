@@ -2,6 +2,7 @@ import pytest
 from anomaly_detector import AnomalyDetector
 
 
+
 @pytest.fixture
 def trained_detector():
     """Prépare un détecteur déjà entraîné, réutilisé par chaque test."""
