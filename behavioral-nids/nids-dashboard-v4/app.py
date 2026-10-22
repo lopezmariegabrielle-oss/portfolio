@@ -141,7 +141,8 @@ def create_app(db_path=None):
         with connect() as c:
             total = c.execute(f"SELECT COUNT(*) FROM alerts {where}", params).fetchone()[0]
             rows = c.execute(
-                "SELECT id, ts, src_ip, dst_ip, dst_port, proto, score, severity, reason, status "
+                "SELECT id, ts, src_ip, dst_ip, dst_port, proto, score, severity, reason, status, "
+                "reputation_score, country "
                 f"FROM alerts {where} ORDER BY ts DESC, id DESC LIMIT ? OFFSET ?",
                 params + [limit, offset]).fetchall()
         return jsonify({"total": total, "items": [dict(r) for r in rows]})

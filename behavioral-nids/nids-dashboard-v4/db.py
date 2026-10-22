@@ -26,7 +26,9 @@ CREATE TABLE IF NOT EXISTS alerts (
     score     REAL    NOT NULL CHECK (score >= 0 AND score <= 1),
     severity  TEXT    NOT NULL CHECK (severity IN ('low','medium','high','critical')),
     reason    TEXT,
-    status    TEXT    NOT NULL DEFAULT 'new' CHECK (status IN ('new','investigating','false_positive','resolved'))
+    status    TEXT    NOT NULL DEFAULT 'new' CHECK (status IN ('new','investigating','false_positive','resolved')),
+    reputation_score INTEGER,              -- AbuseIPDB 0..100 (NULL = inconnu)
+    country   TEXT                         -- code pays, ex. FR
 );
 CREATE INDEX IF NOT EXISTS idx_alerts_ts ON alerts(ts);
 
@@ -64,6 +66,10 @@ def init_db(path=None):
         if "status" not in cols:
             conn.execute("ALTER TABLE alerts ADD COLUMN status TEXT NOT NULL DEFAULT 'new'")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_alerts_status ON alerts(status)")
+        # Migration : bases creees avant la reputation AbuseIPDB
+        for col, typ in (("reputation_score", "INTEGER"), ("country", "TEXT")):
+            if col not in cols:
+                conn.execute(f"ALTER TABLE alerts ADD COLUMN {col} {typ}")
 
 
 def severity_from_score(score):
@@ -78,15 +84,15 @@ def severity_from_score(score):
 
 
 def insert_alert(conn, ts, src_ip, dst_ip, score, dst_port=None, proto=None,
-                 reason=None, severity=None):
+                 reason=None, severity=None, reputation_score=None, country=None):
     """Enregistre une alerte. `ts` doit etre au format 'YYYY-MM-DDTHH:MM:SSZ' (UTC)."""
     if not 0 <= score <= 1:
         raise ValueError("score doit etre compris entre 0 et 1")
     severity = severity or severity_from_score(score)
     conn.execute(
-        "INSERT INTO alerts (ts, src_ip, dst_ip, dst_port, proto, score, severity, reason) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        (ts, src_ip, dst_ip, dst_port, proto, score, severity, reason),
+        "INSERT INTO alerts (ts, src_ip, dst_ip, dst_port, proto, score, severity, reason, "
+        "reputation_score, country) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (ts, src_ip, dst_ip, dst_port, proto, score, severity, reason, reputation_score, country),
     )
 
 

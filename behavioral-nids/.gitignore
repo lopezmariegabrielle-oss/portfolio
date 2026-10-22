@@ -1,0 +1,16 @@
+venv/
+__pycache__/
+.pytest_cache/
+.DS_Store
+*.db
+*.db-wal
+*.db-shm
+*.avant-abuseipdb
+archive/
+
+*.db
+.DS_Store
+__pycache__/
+*.pyc
+dataset.backup.csv
+venv/

@@ -20,6 +20,21 @@ import db  # noqa: E402
 from engine import simulate  # noqa: E402
 from engine.model import ALERT_THRESHOLD  # noqa: E402
 
+try:  # reputation AbuseIPDB (optionnelle)
+    from reputation import ReputationClient  # noqa: E402
+except ImportError:
+    ReputationClient = None
+
+_rep_client = None
+
+
+def _reputation():
+    """Client AbuseIPDB cree a la demande ; None s'il est desactive (pas de cle)."""
+    global _rep_client
+    if _rep_client is None and ReputationClient is not None:
+        _rep_client = ReputationClient()
+    return _rep_client if _rep_client is not None and _rep_client.enabled else None
+
 MODEL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "model.pkl")
 ISO = "%Y-%m-%dT%H:%M:%SZ"
 
@@ -39,15 +54,19 @@ def next_flows(rng, attack_prob=0.03):
     return flows
 
 
-def process(conn, det, flows, now):
+def process(conn, det, flows, now, enrich=True):
     """Note les flux, met a jour le trafic de la minute, cree les alertes. Renvoie le nb d'alertes."""
     scores = det.score(flows)
     alerts = 0
     for f, sc in zip(flows, scores):
         if sc >= ALERT_THRESHOLD:
             alerts += 1
+            client = _reputation() if enrich else None
+            rep = client.enrich(f["src_ip"], f["dst_ip"]) if client else None
             db.insert_alert(conn, now.strftime(ISO), f["src_ip"], f["dst_ip"], float(sc),
-                            dst_port=f["dst_port"], proto=f["proto"], reason=det.explain(f))
+                            dst_port=f["dst_port"], proto=f["proto"], reason=det.explain(f),
+                            reputation_score=rep["reputation_score"] if rep else None,
+                            country=rep["country"] if rep else None)
     db.add_traffic(conn, now.replace(second=0).strftime(ISO), len(flows), alerts)
     return alerts
 
@@ -71,7 +90,7 @@ def main():
         while not args.seconds or time.time() - start < args.seconds:
             now = datetime.now(timezone.utc).replace(microsecond=0)
             with db.connect() as conn:
-                n = process(conn, det, next_flows(rng), now)
+                n = process(conn, det, next_flows(rng), now, enrich=False)  # flux simules : pas d'AbuseIPDB
             if n:
                 print(now.strftime("%H:%M:%S"), "->", n, "alerte(s)")
             time.sleep(1)

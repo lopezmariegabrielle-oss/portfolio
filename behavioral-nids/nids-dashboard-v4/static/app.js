@@ -185,7 +185,7 @@
     if (!data.items.length) {
       var tr = el("tr");
       var td = el("td", "empty", "Aucune alerte.");
-      td.colSpan = 8;
+      td.colSpan = 9;
       tr.appendChild(td); body.appendChild(tr);
     }
     data.items.forEach(function (a) {
@@ -212,6 +212,19 @@
 
       tr.appendChild(el("td", "reason", a.reason || "—"));
 
+      var rp = el("td");
+      if (a.reputation_score === null || a.reputation_score === undefined) {
+        rp.textContent = "—";
+      } else {
+        var lvl = a.reputation_score >= 75 ? "critical" : a.reputation_score >= 50 ? "high" :
+          a.reputation_score >= 25 ? "medium" : "low";
+        var rb = el("span", "sev sev-" + lvl,
+          a.reputation_score + "/100" + (a.country ? " · " + a.country : ""));
+        rb.title = "Réputation AbuseIPDB (0 = sain, 100 = très signalé)";
+        rp.appendChild(rb);
+      }
+      tr.appendChild(rp);
+
       var st = STATUS_LABEL[a.status] ? a.status : "new";
       tr.className = "st-" + st;
       var stc = el("td");
@@ -224,7 +237,15 @@
         sel.appendChild(o);
       });
       sel.addEventListener("change", function () { setStatus_(a.id, sel.value); });
-      stc.appendChild(sel); tr.appendChild(stc);
+      // bouton rapide : "Traiter" (-> Traitee) ou "Rouvrir" (-> Nouvelle) si deja traitee
+      var done = st === "resolved";
+      var btn = el("button", "btn-treat", done ? "Rouvrir" : "Traiter");
+      btn.type = "button";
+      btn.setAttribute("aria-label", (done ? "Rouvrir" : "Traiter") + " l'alerte " + a.id);
+      btn.addEventListener("click", function () { setStatus_(a.id, done ? "new" : "resolved"); });
+      var box = el("div", "status-cell");
+      box.appendChild(btn); box.appendChild(sel);
+      stc.appendChild(box); tr.appendChild(stc);
       body.appendChild(tr);
     });
     $("alerts-count").textContent = data.items.length + " affichées sur " + fmtInt(data.total);
